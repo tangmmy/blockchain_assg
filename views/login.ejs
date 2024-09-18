@@ -1,101 +1,112 @@
-<!-- views/login.ejs -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login with MetaMask</title>
-  <!-- Materialize CSS -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
-
-  <!-- Materialize JS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
-  <style>
-    .login-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-    .login-box {
-      padding: 40px;
-      background-color: white;
-      border-radius: 10px;
-      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-    }
-    .center-text {
-      text-align: center;
-    }
-    .error-message {
-      color: red;
-      margin-top: 20px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login with MetaMask</title>
+    <!-- Materialize CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+    <!-- Custom Styles -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, #e0f7fa, #b9fbc0); /* Light gradient background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .login-box {
+            padding: 40px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 500px; /* Increase max width for longer addresses */
+        }
+        .login-box h4 {
+            margin-bottom: 20px;
+            color: #00796b; /* Darker shade of green */
+            font-size: 24px;
+        }
+        .btn {
+            background-color: #4a90e2; /* Light blue button */
+            border: none;
+            border-radius: 4px;
+            padding: 12px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            width: 100%; /* Full-width button */
+            margin: 10px 0; /* Space between buttons and also space above and below each button */
+        }
+        .btn:hover {
+            background-color: #357abd; /* Darker blue on hover */
+        }
+        #accountInfo, #errorMessage {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        #accountInfo {
+            color: #00796b; /* Darker shade of green */
+            word-wrap: break-word; /* Break long addresses */
+        }
+        #errorMessage {
+            color: #d32f2f; /* Red for error messages */
+        }
+    </style>
 </head>
 <body>
-  <div class="login-container">
-    <div class="login-box z-depth-2">
-      <h4 class="center-text">Login with MetaMask</h4>
-      <button id="connectButton" class="btn waves-effect waves-light full-width" style="width: 100%; margin-top: 20px;">Connect MetaMask</button>
-      
-      <!-- Display connected account -->
-      <div id="accountInfo" class="center-text" style="margin-top: 20px;"></div>
-      <div id="errorMessage" class="center-text error-message">
-        
-      </div>
-      
-      
-      <button id="loginButton" class="btn waves-effect waves-light full-width" style="width: 100%; margin-top: 20px;">Login</button>
+    <div class="login-box">
+        <h4>Login with MetaMask</h4>
+        <button id="connectButton" class="btn">Connect MetaMask</button>
+        <div id="accountInfo"></div>
+        <div id="errorMessage"></div>
+        <button id="loginButton" class="btn">Login</button>
     </div>
-  </div>
 
-  <script>
-    async function getNonce() {
-      const response = await fetch('/api/nonce');
-      const data = await response.json();
-      return data.nonce;
-    }
-    let accounts, account;
-    document.getElementById('connectButton').addEventListener('click', async () => {
-      if (window.ethereum) {
-        try {
-          accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-          account = accounts[0];
-
-          document.getElementById('accountInfo').innerText = `Connected as: ${account}`;
-          
-        } catch (error) {
-          document.getElementById('errorMessage').innerText = 'MetaMask connection failed.';
-        }
-      } else {
-        alert('MetaMask is not installed. Please install it to use this app.');
-      }
-    });
-    document.getElementById('loginButton').addEventListener('click', async () =>{
-      if (!account) {
-        document.getElementById('errorMessage').innerText = 'Please connect to MetaMask first.';
-        return;
-      }
-      try {
-        const response = await fetch('/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ account }),
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
+    <script>
+        let accounts, account;
+        document.getElementById('connectButton').addEventListener('click', async () => {
+            if (window.ethereum) {
+                try {
+                    accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    account = accounts[0];
+                    document.getElementById('accountInfo').innerText = `Connected as: ${account}`;
+                } catch (error) {
+                    document.getElementById('errorMessage').innerText = 'MetaMask connection failed.';
+                }
+            } else {
+                alert('MetaMask is not installed. Please install it to use this app.');
+            }
         });
-        const res = await response.json();
-        if (!response.ok) {
-          throw new Error(res.message || 'Login failed');
-        }
-        else{
-          window.location.href="/dashboard";
-        } 
-      } catch (error) {
-        document.getElementById('errorMessage').innerText = error.message || 'An error occurred during login.';
-      }
-    });
-    
-    
-  </script>
+
+        document.getElementById('loginButton').addEventListener('click', async () => {
+            if (!account) {
+                document.getElementById('errorMessage').innerText = 'Please connect to MetaMask first.';
+                return;
+            }
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ account }),
+                });
+                const res = await response.json();
+                if (!response.ok) {
+                    throw new Error(res.message || 'Login failed');
+                } else {
+                    window.location.href = "/dashboard";
+                }
+            } catch (error) {
+                document.getElementById('errorMessage').innerText = error.message || 'An error occurred during login.';
+            }
+        });
+    </script>
 </body>
 </html>

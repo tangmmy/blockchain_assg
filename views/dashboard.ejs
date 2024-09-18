@@ -12,33 +12,109 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
+            background: linear-gradient(to right, #e0f7fa, #b9fbc0); /* Light gradient background */
         }
         header, footer {
-            background-color: #333;
+            background-color: #4a90e2; /* Light blue header/footer */
             color: white;
             text-align: center;
             padding: 1rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
         main {
             display: flex;
             flex: 1;
+            overflow: hidden;
         }
         nav {
-            width: 200px;
-            background-color: #f4f4f4;
+            width: 240px;
+            background-color: #e0f2f1; /* Light green sidebar */
             padding: 1rem;
             border-right: 1px solid #ddd;
+            box-shadow: 2px 0 6px rgba(0, 0, 0, 0.1);
+            transition: width 0.3s;
+        }
+        nav:hover {
+            width: 260px; /* Expand sidebar on hover */
+        }
+        nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        nav ul li {
+            margin: 0.5rem 0;
+        }
+        nav ul li a {
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+            padding: 0.5rem;
+            display: block;
+            border-radius: 4px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        nav ul li a:hover, nav ul li a.active {
+            background-color: #b2dfdb; /* Hover and active color */
+            color: #004d40;
         }
         section {
             flex: 1;
             padding: 2rem;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            margin: 1rem;
+            transition: box-shadow 0.3s;
+        }
+        section:hover {
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
         }
         footer {
-            background-color: #444;
+            background-color: #4a90e2;
+            padding: 0.5rem;
+            box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .footer-links {
+            margin-top: 10px;
+        }
+        .footer-links a {
+            color: #b9fbc0; /* Light green */
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .footer-links a:hover {
+            text-decoration: underline;
         }
         .welcome {
             font-size: 24px;
             margin-bottom: 1rem;
+            color: #333;
+        }
+        p {
+            color: #555;
+        }
+        @media (max-width: 768px) {
+            nav {
+                width: 100%;
+                border-right: none;
+                box-shadow: none;
+            }
+            nav ul {
+                display: flex;
+                justify-content: space-around;
+                padding: 0;
+            }
+            nav ul li {
+                margin: 0;
+            }
+            nav ul li a {
+                padding: 0.5rem 1rem;
+            }
+            section {
+                margin: 0.5rem;
+                padding: 1rem;
+            }
         }
     </style>
 </head>
@@ -53,7 +129,7 @@
         <!-- Sidebar -->
         <nav>
             <ul>
-                <li><a href="#">Home</a></li>
+                <li><a href="#" class="active">Home</a></li>
                 <li><a href="#">Profile</a></li>
                 <li><a href="#">Settings</a></li>
                 <li><a href="#">Logout</a></li>
@@ -69,17 +145,21 @@
 
     <!-- Footer -->
     <footer>
-        <p>Footer content here</p>
+        <p>© 2024 Your Company</p>
+        <div class="footer-links">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+            <a href="#">Contact Us</a>
+        </div>
     </footer>
 
     <script>
-      /*
-        // Fetch the user address from the query params or fallback to 'Guest'
+      // Uncomment if needed for dynamic user address
+        /*
         const params = new URLSearchParams(window.location.search);
         const userAddress = params.get('address') || 'Guest';
-*/
-        // Display the user's address in the welcome message
-       // document.getElementById('welcomeMessage').textContent = `Welcome, ${userAddress}`;
+        document.getElementById('welcomeMessage').textContent = `Welcome, ${userAddress}`;
+      */
     </script>
 </body>
 </html>
