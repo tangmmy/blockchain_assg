@@ -196,7 +196,46 @@ app.get('/', (req, res) => {
   res.render('login');
 });
 
+app.get('/employer', (req, res) => {
+  // Pass the contract address and ABI 
+res.render('employer', { 
+      whitelistContractAddress: whitelistContractAddress, 
+      whitelistABI: JSON.stringify(whitelistABI)
+  });
+});
 
+app.get('/employee', (req, res) => {
+// Pass the contract address and ABI 
+  res.render('employee', { 
+      whitelistContractAddress: whitelistContractAddress, 
+      whitelistABI: JSON.stringify(whitelistABI)
+  });
+});
+
+app.get('/employeeManagement', (req, res) => {
+// Pass the contract address and ABI 
+  res.render('employeeManagement', { 
+      whitelistContractAddress: whitelistContractAddress, 
+      whitelistABI: JSON.stringify(whitelistABI)
+  });
+});
+
+app.get('/salaryManagement', (req, res) => {
+// Pass the contract address and ABI 
+  res.render('salaryManagement', { 
+      whitelistContractAddress: whitelistContractAddress, 
+      whitelistABI: JSON.stringify(whitelistABI)
+  });
+});
+
+
+app.get('/contractBalanceManagement', (req, res) => {
+// Pass the contract address and ABI 
+  res.render('contractBalanceManagement', { 
+      whitelistContractAddress: whitelistContractAddress, 
+      whitelistABI: JSON.stringify(whitelistABI)
+  });
+});
 // GET route to retrieve a nonce value for use in signing
 app.get('/api/nonce', (req, res) => {
   // Generate a random 32-byte value to use as the nonce

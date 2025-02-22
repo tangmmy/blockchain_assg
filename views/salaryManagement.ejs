@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salary Management</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        
+        header, footer {
+            background-color: #007BFF;
+            color: white;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        main {
+            display: flex;
+            flex: 1;
+        }
+
+        section {
+            flex: 1;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 32px;
+            color: white;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="datetime-local"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .cancel-btn {
+            background-color: #dc3545;
+            color: white;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+            border: none;
+        }
+
+        .cancel-btn:hover {
+            background-color: #c82333;
+        }
+
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+
+        .action-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th, .table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        .table th {
+            background-color: #f8f8f8;
+        }
+
+        ul {
+            padding: 0;
+            list-style-type: none;
+        }
+
+        li {
+            font-size: 18px;
+            padding: 10px;
+            background-color: #f8f8f8;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-around;
+            background-color: #333;
+            padding: 1rem;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+        }
+
+        nav a:hover {
+            background-color: #007BFF;
+            border-radius: 5px;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script>
+        let web3;
+        let contract;
+        const contractAddress = '<%= whitelistContractAddress %>';
+        const abi = JSON.parse('<%- whitelistABI %>');
+
+        // Connect to MetaMask and load the contract
+        async function connectMetaMask() {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                try {
+                    await window.ethereum.request({ method: "eth_requestAccounts" });
+                    contract = new web3.eth.Contract(abi, contractAddress);
+                    console.log("MetaMask connected and contract loaded");
+                    //await loadNewEmployeeList();
+                    await loadSalaryList();
+                } catch (error) {
+                    console.error("Error connecting to MetaMask", error);
+                }
+            } else {
+                alert("MetaMask is required to interact with this dApp.");
+            }
+        }
+        
+        // Deposit Salary
+        async function depositSalary() {
+            const employeeAddress = document.getElementById("salaryEmployeeAddress").value;
+            const salaryAmount = document.getElementById("salaryAmount").value;
+            const lockReleaseDateTime = document.getElementById("lockReleaseDateTime").value; // Get the date and time from the picker
+            const accounts = await web3.eth.getAccounts();
+            const connectedAddress = accounts[0];
+        
+            try {
+                // Check if the address is a valid Ethereum address
+                if (!web3.utils.isAddress(employeeAddress)) {
+                    alert("Invalid Ethereum address. Please enter a valid address.");
+                    return;
+                }
+
+                // Check if the entered address is the user's own MetaMask address
+                if (employeeAddress.toLowerCase() === connectedAddress.toLowerCase()) {
+                    alert("You cannot deposit salary to your own MetaMask address.");
+                    return;
+                }
+
+                // Get the current employee list from the contract
+                const employeeList = await contract.methods.getAllEmployeeAddresses().call();
+
+                // Check if the address is already in the employee list
+                if (!employeeList.includes(employeeAddress)) {
+                    alert("This address is not in the employee list. Please add the employee first.");
+                    return;
+                }
+
+                // Check if the deposit amount is greater than 0
+                if (parseFloat(salaryAmount) <= 0) {
+                    alert("The salary amount must be greater than 0.");
+                    return;
+                }
+
+                const amountInWei = web3.utils.toWei(salaryAmount, 'ether');
+
+                // Convert the selected date and time to a Unix timestamp
+                const lockReleaseDate = new Date(lockReleaseDateTime).getTime() / 1000; // Convert to seconds (Unix timestamp)
+
+                // Get the current time as a Unix timestamp
+                const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+
+                // Calculate the lock duration in seconds
+                const lockDuration = lockReleaseDate - currentTime;
+                
+                if (lockDuration <= 0) {
+                    alert("The lock release date and time must be in the future.");
+                    return;
+                }
+
+                // Call the smart contract method and send the transaction
+                await contract.methods.assignSalary(employeeAddress, amountInWei, lockDuration)
+                    .send({ from: accounts[0], value: amountInWei });
+                
+                alert("Salary deposited successfully!");
+                await loadSalaryList();  // Refresh the employee list
+            } catch (error) {
+                console.error("Error depositing salary:", error);
+                alert("Failed to deposit salary. Please try again.");
+            }
+        }
+
+        //Modify Salary function
+        async function modifySalary(employeeAddress) {
+            const accounts = await web3.eth.getAccounts();
+
+            // Prompt the user for the new salary amount
+            const newSalary = prompt(`Enter new salary for ${employeeAddress}`);
+            if (!newSalary|| isNaN(newSalary) || parseFloat(newSalary) <= 0) {
+                alert("Salary modification cancelled or invalid salary format. Please enter a number greater than 0.");
+                return;
+            }
+
+            // Prompt the user for the new release date and time
+            const newReleaseDateTime = prompt(`Enter new release date and time for ${employeeAddress} (in the format YYYY-MM-DD HH:MM)`);
+
+
+            // Validate the format of the release date
+            const dateRegex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+
+            if (!newReleaseDateTime || !dateRegex.test(newReleaseDateTime)) {
+                alert("Release date modification cancelled or invalid format.");
+                return;
+            }
+
+            try {
+                // Convert new salary to Wei
+                const newSalaryInWei = web3.utils.toWei(newSalary, 'ether');
+
+                // Convert the new release date and time to a Unix timestamp
+                const newReleaseDate = new Date(newReleaseDateTime).getTime() / 1000; // Convert to seconds (Unix timestamp)
+
+                // Get the current time as a Unix timestamp
+                const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+
+                // Calculate the new lock duration in seconds
+                const newLockDuration = newReleaseDate - currentTime;
+
+                if (newLockDuration <= 0) {
+                    alert("The new release date and time must be in the future.");
+                    return;
+                }
+
+                // Call the smart contract method to modify the salary and lock duration and send the salary difference
+                await contract.methods.modifySalary(employeeAddress, newSalaryInWei, newLockDuration)
+                    .send({ from: accounts[0], value: newSalaryInWei });
+
+                alert("Salary and release time modified successfully!");
+
+                // Refresh the employee list
+                await loadSalaryList();
+            } catch (error) {
+                console.error("Error modifying salary and release time:", error);
+            }
+        }
+        
+        //Cancel Salary function
+        async function cancelSalary(employeeAddress) {
+            const accounts = await web3.eth.getAccounts();
+            try {
+                await contract.methods.cancelSalary(employeeAddress).send({ from: accounts[0] });
+                alert(`Salary deposit for ${employeeAddress} has been canceled`);
+                await loadSalaryList();
+            } catch (error) {
+                console.error("Error canceling salary:", error);
+                alert("Failed to cancel salary. Please try again.");
+            }
+        }
+
+        // Load Employee Salary List 
+        async function loadSalaryList() {
+            const employeeTable = document.getElementById('employeeTableBody');
+            employeeTable.innerHTML = ''; // Clear the table
+
+            try {
+                const employeeAddresses = await contract.methods.getAllEmployeeAddresses().call();
+
+                for (let i = 0; i < employeeAddresses.length; i++) {
+                    const employeeAddress = employeeAddresses[i];
+
+                    const salary = await contract.methods.getEmployeeSalary(employeeAddress).call();
+                    const unlockTimeBigInt = await contract.methods.getEmployeeUnlockTime(employeeAddress).call();
+
+                    // Ensure the unlockTimeBigInt is properly converted
+                    const unlockTime = Number(unlockTimeBigInt);
+
+                    // Check if salary or unlockTime is zero and display 'N/A' if true
+                    const salaryDisplay = (salary === '0') ? 'N/A' : `${web3.utils.fromWei(salary, 'ether')} ETH`;
+                    const timeLockStatus = (unlockTime === 0 || isNaN(unlockTime)) ? 'N/A' : ((Date.now() / 1000) < unlockTime ? 'Active' : 'Expired');
+                    const releaseDate = (unlockTime === 0 || isNaN(unlockTime)) ? 'N/A' : new Date(unlockTime * 1000).toLocaleString();
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${employeeAddress}</td>
+                        <td>${salaryDisplay}</td>
+                        <td>${timeLockStatus}</td>
+                        <td>${releaseDate}</td>
+                        <td>
+                            <button class="action-btn" onclick="modifySalary('${employeeAddress}')">Modify</button>
+                            <button class="cancel-btn" onclick="cancelSalary('${employeeAddress}')">Cancel</button>
+                        </td>
+                    `;
+                    employeeTable.appendChild(row);
+                }
+            } catch (error) {
+                console.error("Error loading employee list:", error);
+            }
+        }
+
+        //Load New Employee address list
+        async function loadNewEmployeeList() {
+            const newEmployeeList = document.getElementById('newEmployeeList');
+            newEmployeeList.innerHTML = ''; // Clear the list
+
+            try {
+                // Call your smart contract method to get the employee addresses (replace 'getEmployees' with your contract method)
+                const employeeAddresses = await contract.methods.getAllEmployeeAddresses().call(); // Replace 'getEmployees' with the correct method name
+                
+                employeeAddresses.forEach(address => {
+                    const li = document.createElement('li');
+                    li.textContent = address;
+                    newEmployeeList.appendChild(li);
+                });
+            } catch (error) {
+                console.error("Error loading employee list:", error);
+            }
+        }
+
+        // Logout Script
+        function logout() {
+            // Redirect to login page
+            alert('Logging out...');
+            window.location.href = "/login";
+        }
+        window.onload = connectMetaMask;
+    </script>
+</head>
+
+
+<body>
+    <!-- Header -->
+    <header>
+        <h1>Salary Management</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </header>
+
+    <!-- Navigation Bar -->
+    <nav>
+        <!-- <a href="/employer">Employer Dashboard</a> -->
+        <a href=/dashboard>Home</a>
+        <a href="/employeeManagement">Employee Management</a>
+        <a href="/salaryManagement">Salary Management</a>
+        <a href="/contractBalanceManagement">Contract Balance Management</a>
+    </nav>
+
+    <!-- Main content -->
+    <div class="container">
+        <!-- Section: Newly Added Employee Addresses -->
+        <!-- <section class="section">
+            <h2 class="section-title">Newly Added Employee Addresses</h2>
+            <ul id="newEmployeeList"></ul>
+        </section> -->
+
+        <!-- Section: Deposit Salary -->
+        <section class="section">
+            <h2 class="section-title">Deposit Salary</h2>
+            <label for="salaryEmployeeAddress">Employee Address</label>
+            <input type="text" id="salaryEmployeeAddress" placeholder="Enter Employee Address">
+            <label for="salaryAmount">Salary Amount (ETH)</label>
+            <input type="number" id="salaryAmount" placeholder="Enter Salary Amount">
+            <label for="lockDuration">Lock Release Date & Time</label>
+            <input type="datetime-local" id="lockReleaseDateTime" class="form-control" placeholder="Enter Lock Release Date & Time">
+            <button onclick="depositSalary()">Deposit Salary</button>
+        </section>
+
+        <!-- Section: Employee List -->
+        <section class="section">
+            <h2 class="section-title">Salary List</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Employee Address</th>
+                        <th>Salary Amount</th>
+                        <th>TimeLock Status</th>
+                        <th>Release Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="employeeTableBody">
+                    <!-- Dynamically generated content -->
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2024 Salary Management</p>
+    </footer>
+</body>
+
+</html>

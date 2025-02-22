@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Dashboard</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 80%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 10px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        .info-box {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .info-box p {
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .actions {
+            text-align: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        footer p {
+            font-size: 1em;
+            color: #666;
+    }   
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js/dist/web3.min.js"></script>
+    <script>
+        const contractAddress = '<%= whitelistContractAddress %>';
+        const abi = JSON.parse('<%- whitelistABI %>');
+		
+		let contract;
+    
+        document.addEventListener('DOMContentLoaded', async () => {
+            const employeeAddressElement = document.getElementById('employeeAddress');
+            const salaryAmountElement = document.getElementById('salaryAmount');
+            const timelockStatusElement = document.getElementById('timelockStatus');
+            const releaseDateElement = document.getElementById('releaseDate');
+    
+            // Check if MetaMask is available
+            if (typeof window.ethereum !== 'undefined') {
+                // Request account access
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                const web3 = new Web3(window.ethereum);
+               
+                // Create contract instance and assign globally
+                contract = new web3.eth.Contract(abi, contractAddress);
+    
+                // Get employee address (connected MetaMask account)
+                const accounts = await web3.eth.getAccounts();
+                const employeeAddress = accounts[0];
+    
+                // Function to fetch and display salary information
+                const updateEmployeeDashboard = async () => {
+                    try {
+                        // Fetch the salary and unlock time from the contract for this employee
+                        const salary = await contract.methods.getEmployeeSalary(employeeAddress).call();
+                        const unlockTime = await contract.methods.getEmployeeUnlockTime(employeeAddress).call();
+    
+                        // Convert salary from Wei to ETH
+                        const salaryInETH = web3.utils.fromWei(salary, 'ether');
+    
+                        // Determine TimeLock status (Active/Expired)
+                        const currentTime = Math.floor(Date.now() / 1000); // Get current time in seconds
+                        const timelockStatus = unlockTime > currentTime ? 'Active' : 'Expired';
+    
+                        // Convert unlockTime (UNIX timestamp) to a readable date format
+                        const releaseDate = unlockTime > 0 ? new Date(unlockTime * 1000).toLocaleString() : 'N/A';
+    
+                        // Update the dashboard with actual blockchain data
+                        employeeAddressElement.textContent = employeeAddress;
+                        salaryAmountElement.textContent = salaryInETH + ' ETH';
+                        timelockStatusElement.textContent = timelockStatus;
+                        releaseDateElement.textContent = releaseDate;
+    
+                    } catch (error) {
+                        console.error("Error fetching employee data:", error);
+                        alert("Error fetching employee data. Make sure you're connected to the correct network.");
+                    }
+                };
+    
+                // Initial dashboard update on page load
+                await updateEmployeeDashboard();
+    
+                // Withdraw button logic
+                document.getElementById('withdrawButton').addEventListener('click', async () => {
+                    try {
+                        // Request connected MetaMask accounts
+                        const accounts = await ethereum.request({ method: "eth_requestAccounts" });
+                        const employeeAddress = accounts[0]; // The address of the employee withdrawing salary
+
+                        // Call the withdrawSalary function from the smart contract
+                        const salaryAmount = await contract.methods.getEmployeeSalary(employeeAddress).call();
+                        const unlockTime = await contract.methods.getEmployeeUnlockTime(employeeAddress).call();
+
+                        // Validate that the timelock is expired and salary is available
+                        const currentTime = Math.floor(Date.now() / 1000); // Current timestamp in seconds
+
+                        if (salaryAmount === '0') {
+                            alert('No salary available to withdraw.');
+                            return;
+                        }
+
+                        if (currentTime < unlockTime) {
+                            alert('Your TimeLock is still active. Please wait until the unlock time.');
+                            return;
+                        }
+
+                        // If the validation passes, proceed with the withdrawal
+                        await contract.methods.withdrawSalary().send({ from: employeeAddress });
+                        alert('Withdrawal successful!');
+
+                        // Reset the dashboard data after withdrawal
+                        salaryAmountElement.textContent = '0 ETH';
+                        timelockStatusElement.textContent = 'N/A';
+                        releaseDateElement.textContent = 'N/A';
+
+                        // Optionally, refresh the dashboard with new blockchain data
+                        await updateEmployeeDashboard();
+
+                    } catch (error) {
+                        console.error("Withdrawal failed:", error);
+
+                        // Handle specific cases of failure
+                        if (error.message.includes('revert')) {
+                            alert("Transaction reverted. Ensure your TimeLock is expired and the employer has sufficient funds.");
+                        } else if (error.message.includes('User denied transaction')) {
+                            alert("Transaction was rejected. Please try again.");
+                        } else {
+                            alert("Failed to withdraw salary. Please try again later.");
+                        }
+                    }
+                });
+    
+                // Logout button logic (placeholder for actual logout functionality)
+                document.getElementById('logoutButton').addEventListener('click', () => {
+                    alert('Logging out...');
+                    window.location.href = "/login"; // Redirect to login page after logging out
+                });
+            } else {
+                alert("Please connect to MetaMask");
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Employee Dashboard</h1>
+            <p>Connected as: <span id="employeeAddress"></span></p>
+            <button id="logoutButton" class="btn">Logout</button>
+        </header>
+
+        <section class="balance">
+            <h2>Salary Information</h2>
+            <div class="info-box">
+                <p><strong>Salary Amount:</strong> <span id="salaryAmount">0 ETH</span></p>
+                <p><strong>TimeLock Status:</strong> <span id="timelockStatus">Active</span></p>
+                <p><strong>Release Date:</strong> <span id="releaseDate">N/A</span></p>
+            </div>
+        </section>
+
+        <section class="actions">
+            <h2>Actions</h2>
+            <button id="withdrawButton" class="btn">Withdraw Salary</button>
+        </section>
+
+        <footer>
+            <p>&copy; 2024 Employee Dashboard</p>
+        </footer>
+    </div>
+
+    <script src="/js/employee_dashboard.js"></script>
+</body>
+</html>

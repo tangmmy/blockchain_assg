@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Management</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header, footer {
+            background-color: #007BFF;
+            color: white;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        main {
+            display: flex;
+            flex: 1;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 32px;
+            color: white;
+            margin: 0;
+        }
+
+        .logout-btn {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            background-color: #dc3545;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .refresh-btn {
+            background-color: #17a2b8;
+            margin-right: 10px;
+        }
+
+        .refresh-btn:hover {
+            background-color: #138496;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            background-color: #007BFF;
+            color: white;
+            padding: 10px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #555;
+        }
+
+        p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-around;
+            background-color: #333;
+            padding: 1rem;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+        }
+
+        nav a:hover {
+            background-color: #007BFF;
+            border-radius: 5px;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script>
+        let web3;
+        let contract;
+        const contractAddress = '<%= whitelistContractAddress %>';
+        const abi = JSON.parse('<%- whitelistABI %>');
+
+        // Connect to MetaMask and load the contract
+        async function connectMetaMask() {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                try {
+                    await window.ethereum.request({ method: "eth_requestAccounts" });
+                    contract = new web3.eth.Contract(abi, contractAddress);
+                    console.log("MetaMask connected and contract loaded");
+                } catch (error) {
+                    console.error("Error connecting to MetaMask", error);
+                }
+            } else {
+                alert("MetaMask is required to interact with this dApp.");
+            }
+        }
+
+
+        // Get Contract Balance
+        async function getContractBalance() {
+            try {
+                const balance = await contract.methods.getContractBalance().call();
+                document.getElementById("contractBalance").innerText = web3.utils.fromWei(balance, "ether") + " ETH";
+            } catch (error) {
+                console.error("Error getting contract balance:", error);
+            }
+        }
+
+        // Withdraw Contract Balance
+		async function withdrawBalance() {
+			const accounts = await web3.eth.getAccounts(); // Get MetaMask accounts
+			const amountToWithdraw = document.getElementById('withdrawAmount').value; // Assuming you have an input field for amount
+
+            // Validate that the amount is not empty, is a number, and is greater than 0
+            if (!amountToWithdraw || isNaN(amountToWithdraw) || parseFloat(amountToWithdraw) <= 0) {
+                alert("Please enter a valid withdrawal amount greater than 0.");
+                return;
+            }
+
+            // Retrieve the current contract balance
+            let contractBalanceInWei;
+            try {
+                contractBalanceInWei = await web3.eth.getBalance(contractAddress); // Get contract balance in Wei
+            } catch (error) {
+                console.error("Error retrieving contract balance:", error);
+                alert("Failed to retrieve contract balance.");
+                return;
+            }
+
+            const contractBalanceInEth = web3.utils.fromWei(contractBalanceInWei, 'ether'); // Convert to ETH for comparison
+
+            // Check if the withdrawal amount is smaller than the current contract balance
+            if (parseFloat(amountToWithdraw) > parseFloat(contractBalanceInEth)) {
+                alert(`The amount you entered exceeds the contract balance of ${contractBalanceInEth} ETH.`);
+                return;
+            }
+
+            
+            try {
+				const amountInWei = web3.utils.toWei(amountToWithdraw, 'ether');  // Convert ETH to Wei
+				await contract.methods.withdrawContractBalance(amountInWei).send({ from: accounts[0] });
+				alert("Contract balance withdrawn!");
+				await getContractBalance();  // Refresh contract balance after withdrawal
+			} catch (error) {
+				console.error("Error withdrawing balance:", error);
+				alert("Withdrawal failed.");
+			}
+		}
+
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			if (typeof window.ethereum !== 'undefined') {
+				await window.ethereum.request({ method: 'eth_requestAccounts' });
+				window.web3 = new Web3(window.ethereum); // Initialize Web3
+				console.log('MetaMask connected and web3 loaded');
+				
+				window.contract = new web3.eth.Contract(abi, contractAddress);
+
+				// After web3 and contract are initialized, you can add the button event listeners
+				document.getElementById('withdrawButton').addEventListener('click', withdrawBalance);
+			} else {
+				console.log('MetaMask is not installed');
+				alert('Please install MetaMask to use this application.');
+			}
+		});
+
+
+        async function depositFunds() {
+			const amountElement = document.getElementById('depositAmount');
+			const amount = amountElement.value; // Get the value from the input field
+			const accounts = await ethereum.request({ method: "eth_requestAccounts" });
+			const employerAddress = accounts[0];
+
+            // Validate that the amount is not empty, is a number, and is greater than 0
+            if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+                alert("Please enter a valid deposit amount greater than 0.");
+                return;
+            }
+			
+			try {
+				// Sending Ether to the contract as a deposit
+				await contract.methods.depositFunds().send({ 
+					from: employerAddress,
+					value: web3.utils.toWei(amount, 'ether') // Convert to Wei
+				});
+				alert("Deposit successful!");
+				await getContractBalance();  // Refresh contract balance after withdrawal
+				// Optionally refresh balance or perform another action
+			} catch (error) {
+				console.error("Deposit failed:", error);
+				alert("Failed to deposit funds.");
+			}
+		}
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const depositButton = document.getElementById('depositButton');
+            if (depositButton) {
+                depositButton.addEventListener('click', depositFunds);
+            } else {
+                console.error("Deposit button not found");
+            }
+        });
+
+
+        // Logout Script
+        function logout() {
+            // Redirect to login page
+            alert('Logging out...');
+            window.location.href = "/login";
+        }
+        window.onload = connectMetaMask;
+    </script>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <h1>Contract Balance Management</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </header>
+
+    <!-- Navigation Bar -->
+    <nav>
+        <!-- <a href="/employer">Employer Dashboard</a> -->
+        <a href=/dashboard>Home</a>
+        <a href="/employeeManagement">Employee Management</a>
+        <a href="/salaryManagement">Salary Management</a>
+        <a href="/contractBalanceManagement">Contract Balance Management</a>
+    </nav>
+
+    <!-- Main content -->
+    <div class="container">
+        <!-- Section: Contract Balance -->
+        <section class="section">
+            <h2 class="section-title">Contract Balance</h2>
+            <p>Current Balance: <span id="contractBalance">0 ETH</span></p>
+            <button class="refresh-btn" onclick="getContractBalance()">Refresh Balance</button>
+            <div>
+                <label for="withdrawAmount">Enter Amount to Withdraw (in ETH):</label>
+                <input type="number" id="withdrawAmount" placeholder="Enter amount in ETH">
+                <button id="withdrawButton">Withdraw</button>
+            </div>
+            <div>
+                <label for="depositAmount">Enter Amount to Deposit (in ETH):</label>
+                <input type="number" id="depositAmount" placeholder="Enter amount in ETH" min="0.01" step="0.01">
+                <button id="depositButton">Deposit</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2024 Contract Balance Management</p>
+    </footer>
+</body>
+</body>
+</html>

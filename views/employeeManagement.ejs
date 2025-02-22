@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Management</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header, footer {
+            background-color: #007BFF;;
+            color: white;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        main {
+            display: flex;
+            flex: 1;
+        }
+
+        section {
+            flex: 1;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 20px;
+            
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 32px;
+            color: white;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .cancel-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        .cancel-btn:hover {
+            background-color: #c82333;
+        }
+
+        .section-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #555;
+        }
+
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+
+        ul {
+            padding: 0;
+            list-style-type: none;
+        }
+
+        li {
+            font-size: 18px;
+            padding: 10px;
+            background-color: #f8f8f8;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-around;
+            background-color: #333;
+            padding: 1rem;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+        }
+
+        nav a:hover {
+            background-color: #007BFF;
+            border-radius: 5px;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script>
+        let web3;
+        let contract;
+        const contractAddress = '<%= whitelistContractAddress %>';
+        const abi = JSON.parse('<%- whitelistABI %>');
+
+        // Connect to MetaMask and load the contract
+        async function connectMetaMask() {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                try {
+                    await window.ethereum.request({ method: "eth_requestAccounts" });
+                    contract = new web3.eth.Contract(abi, contractAddress);
+                    console.log("MetaMask connected and contract loaded");
+                    await loadNewEmployeeList();
+                } catch (error) {
+                    console.error("Error connecting to MetaMask", error);
+                }
+            } else {
+                alert("MetaMask is required to interact with this dApp.");
+            }
+        }
+
+        //add Employee
+        async function addEmployee() {
+		const employeeAddress = document.getElementById('employeeAddress').value;
+
+		if (!web3.utils.isAddress(employeeAddress)) {
+			alert('Invalid address. Please enter a valid Ethereum address.');
+			return;
+		}
+
+		// Get the connected MetaMask address
+		const accounts = await web3.eth.getAccounts();
+		const connectedAddress = accounts[0];
+
+		// Check if the entered address is the same as the connected MetaMask address
+		if (employeeAddress.toLowerCase() === connectedAddress.toLowerCase()) {
+			alert("You cannot add your own MetaMask address as an employee.");
+			return;
+		}
+
+		try {
+
+            // Get the current list of employee addresses
+            const employeeList = await contract.methods.getAllEmployeeAddresses().call();
+
+            // Check if the address already exists
+            if (employeeList.includes(employeeAddress)) {
+                alert("This address has already been added.");
+                return;
+            }
+
+			await contract.methods.addEmployee(employeeAddress).send({ from: connectedAddress });
+			alert("Employee address added successfully!");
+			// Optionally refresh employee list here
+			await loadNewEmployeeList();
+		} catch (error) {
+			console.error("Error adding employee:", error);
+			alert("Failed to add employee. Please try again.");
+			}
+		}
+
+        //Load New Employee address from the smart contract
+        async function loadNewEmployeeList() {
+            const newEmployeeList = document.getElementById('newEmployeeList');
+            newEmployeeList.innerHTML = ''; // Clear the list
+
+            try {
+                // Call your smart contract method to get the employee addresses (replace 'getEmployees' with your contract method)
+                const employeeAddresses = await contract.methods.getAllEmployeeAddresses().call(); // Replace 'getEmployees' with the correct method name
+                
+                employeeAddresses.forEach(address => {
+                    const li = document.createElement('li');
+                    li.textContent = address;
+                    newEmployeeList.appendChild(li);
+                });
+            } catch (error) {
+                console.error("Error loading employee list:", error);
+            }
+        }
+
+        //Remove employee
+        async function removeEmployee(employeeAddress) {
+            const employeeAddress1 = document.getElementById('employeeAddress').value;
+
+            if (!web3.utils.isAddress(employeeAddress1)) {
+                alert('Invalid address. Please enter a valid Ethereum address.');
+                return;
+            }
+
+            const accounts1 = await web3.eth.getAccounts();
+            const connectedAddress1 = accounts1[0];
+
+            // Check if the entered address is the same as the connected MetaMask address
+            if (employeeAddress1.toLowerCase() === connectedAddress1.toLowerCase()) {
+                alert("You cannot enter you own address!");
+                return;
+            }
+            
+			try {
+
+                // Get the list of employees from the contract
+                const employeeAddresses = await contract.methods.getAllEmployeeAddresses().call();
+
+                // Check if the entered address is in the list
+                const addressExists = employeeAddresses.some(
+                    (address) => address.toLowerCase() === employeeAddress1.toLowerCase()
+                );
+
+                if (!addressExists) {
+                    alert("The address does not exist in the employee list.");
+                    return;
+                }
+
+				// Call the smart contract's removeEmployee method
+				await contract.methods.removeEmployee(employeeAddress1)
+					.send({ from: accounts1[0] });
+				
+				alert("Employee removed successfully!");
+
+				// Refresh the employee list
+				await loadEmployeeList();
+			} catch (error) {
+				console.error("Error removing employee:", error);
+                alert("Failed to remove employee. Please try again.");
+			}
+        }
+
+
+        // Logout Script
+        function logout() {
+            // Redirect to login page
+            alert('Logging out...');
+            window.location.href = "/login";
+        }
+        window.onload = connectMetaMask;
+    </script>
+</head>
+
+
+<body>
+    <!-- Header -->
+    <header>
+        <h1>Employee Management</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </header>
+
+    <!-- Navigation Bar -->
+    <nav>
+        <!-- <a href="/employer">Employer Dashboard</a> -->
+        <a href=/dashboard>Home</a>
+        <a href="/employeeManagement">Employee Management</a>
+        <a href="/salaryManagement">Salary Management</a>
+        <a href="/contractBalanceManagement">Contract Balance Management</a>
+    </nav>
+    
+    <!-- Main content -->
+    <div class="container">
+        <!-- Section: Newly Added Employee Addresses -->
+        <section class="section">
+            <h2 class="section-title">Newly Added Employee Addresses</h2>
+            <ul id="newEmployeeList"></ul>
+        </section>
+
+        <!-- Section: Add or Remove Employee -->
+        <section class="section">
+            <h2 class="section-title">Manage Employee Address</h2>
+            <input type="text" id="employeeAddress" placeholder="Enter Employee Address">
+            <button onclick="addEmployee()">Add Employee</button>
+            <button class="cancel-btn" onclick="removeEmployee()">Remove Employee</button>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2024 Employee Management</p>
+    </footer>
+</body>
+</html>
+
+        
+
